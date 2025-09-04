@@ -1,7 +1,7 @@
 pipeline {
   agent {
     docker {
-      image 'openjdk:17-jdk'
+      image 'ubuntu:22.04'
       args '-v /var/run/docker.sock:/var/run/docker.sock'
     }
   }
@@ -16,11 +16,24 @@ pipeline {
     stage('Install Dependencies') {
       steps {
         sh '''
-          # Install Python 3.11
+          # Update package list
           apt-get update
+          
+          # Install Java 17 for SonarQube Scanner
+          apt-get install -y openjdk-17-jdk
+          
+          # Install Python 3.11
           apt-get install -y python3.11 python3.11-venv python3.11-dev python3-pip
           ln -sf /usr/bin/python3.11 /usr/bin/python
           ln -sf /usr/bin/python3.11 /usr/bin/python3
+          
+          # Install Docker CLI
+          apt-get install -y docker.io
+          
+          # Verify installations
+          java -version
+          python --version
+          docker --version
           
           # Create virtual environment and install dependencies
           python -m venv .venv
