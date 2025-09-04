@@ -1,7 +1,7 @@
 pipeline {
   agent {
     docker {
-      image 'python:3.11'
+      image 'openjdk:17-jdk'
       args '-v /var/run/docker.sock:/var/run/docker.sock'
     }
   }
@@ -16,6 +16,13 @@ pipeline {
     stage('Install Dependencies') {
       steps {
         sh '''
+          # Install Python 3.11
+          apt-get update
+          apt-get install -y python3.11 python3.11-venv python3.11-dev python3-pip
+          ln -sf /usr/bin/python3.11 /usr/bin/python
+          ln -sf /usr/bin/python3.11 /usr/bin/python3
+          
+          # Create virtual environment and install dependencies
           python -m venv .venv
           . .venv/bin/activate
           pip install --upgrade pip
