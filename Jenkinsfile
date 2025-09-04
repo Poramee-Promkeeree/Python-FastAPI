@@ -16,6 +16,8 @@ pipeline {
     stage('Install Dependencies') {
       steps {
         sh '''
+          python -m venv .venv
+          . .venv/bin/activate
           pip install --upgrade pip
           pip install -r requirements.txt
           pip install pytest pytest-cov coverage
@@ -25,18 +27,18 @@ pipeline {
 
     stage('Run Tests & Coverage') {
       steps {
-        sh 'pytest --cov=app --cov-report=xml:coverage.xml -q'
+        sh '''
+          . .venv/bin/activate
+          pytest --cov=app --cov-report=xml:coverage.xml -q
+        '''
       }
     }
 
     stage('SonarQube Analysis') {
       steps {
         script {
-          // ดึง path ของ SonarQube Scanner จาก Jenkins Tools
-          def scannerHome = tool 'SonarQube Scanner'   // ต้องตรงกับชื่อที่ตั้งไว้ใน Manage Jenkins → Tools
-
-          // ใช้ server ชื่อให้ตรงกับที่ตั้งค่าใน Configure System → SonarQube servers
-          withSonarQubeEnv('SonarQube servers') {
+          def scannerHome = tool 'SonarQube Scanner'   // ชื่อตรงกับที่ตั้งใน Tools
+          withSonarQubeEnv('SonarQube servers') {       // ตรงกับชื่อ server config
             sh """
               "${scannerHome}/bin/sonar-scanner" \
                 -Dsonar.python.coverage.reportPaths=coverage.xml
@@ -63,8 +65,6 @@ pipeline {
   }
 
   post {
-    always {
-      echo "Pipeline finished"
-    }
+    always { echo "Pipeline finished" }
   }
 }
