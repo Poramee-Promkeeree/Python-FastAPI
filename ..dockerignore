@@ -1,0 +1,14 @@
+.venv
+.git
+.gitignore
+README.md
+.pytest_cache
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.coverage
+coverage.xml
+.sonar
+Jenkinsfile
+sonar-project.properties
