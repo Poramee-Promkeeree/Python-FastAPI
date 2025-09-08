@@ -7,7 +7,7 @@ pipeline {
   }
 
   environment {
-    SONARQUBE = credentials('GlobalSonar')
+    SONARQUBE = credentials('GlobalSonar')  // จะมีหรือไม่มีก็ได้
   }
 
   stages {
@@ -39,22 +39,21 @@ pipeline {
       }
     }
 
+    // 🔧 เปลี่ยน agent เฉพาะสเตจนี้ให้ใช้ภาพ sonarsource/sonar-scanner-cli
     stage('SonarQube Analysis') {
+      agent {
+        docker {
+          image 'sonarsource/sonar-scanner-cli:latest'
+          // ไม่ต้อง mount docker.sock เพราะเราไม่เรียก docker ข้างในอีก
+        }
+      }
       steps {
         withSonarQubeEnv('SonarQube servers') {
-          script {
-            def WS = pwd()
-            sh """
-              export PYTHONPATH="${WS}"
-              docker run --rm \
-                -e SONAR_HOST_URL="$SONAR_HOST_URL" \
-                -e SONAR_LOGIN="$SONAR_AUTH_TOKEN" \
-                -v "${WS}:/usr/src" \
-                -w /usr/src \
-                sonarsource/sonar-scanner-cli:latest \
-                sonar-scanner
-            """
-          }
+          // ใช้ single-quoted heredoc เพื่อเลี่ยง Groovy interpolation warning ของ secret
+          sh '''
+            export PYTHONPATH="$PWD"
+            sonar-scanner
+          '''
         }
       }
     }
