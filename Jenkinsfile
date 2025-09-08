@@ -21,6 +21,7 @@ pipeline {
           . venv/bin/activate
           pip install --upgrade pip
           pip install -r requirements.txt
+          pip install pytest pytest-cov            # <--- เพิ่มบรรทัดนี้
         '''
       }
     }
@@ -33,7 +34,7 @@ pipeline {
     }
     stage('SonarQube Analysis') {
       steps {
-        withSonarQubeEnv('SonarQube servers') {   // <<< ใช้ชื่อนี้
+        withSonarQubeEnv('SonarQube servers') {
           sh 'sonar-scanner'
         }
       }
