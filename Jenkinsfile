@@ -5,15 +5,18 @@ pipeline {
       args '-v /var/run/docker.sock:/var/run/docker.sock'
     }
   }
+
   environment {
     SONARQUBE = credentials('GlobalSonar')
   }
+
   stages {
     stage('Checkout') {
       steps {
         git branch: 'main', url: 'https://github.com/Poramee-Promkeeree/Python-FastAPI.git'
       }
     }
+
     stage('Setup venv') {
       steps {
         sh '''
@@ -21,35 +24,48 @@ pipeline {
           . venv/bin/activate
           pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pytest pytest-cov            # <--- เพิ่มบรรทัดนี้
+          pip install pytest pytest-cov
         '''
       }
     }
+
     stage('Run Tests & Coverage') {
       steps {
         sh '''
-          venv/bin/pytest --maxfail=1 --disable-warnings -q --cov=app --cov-report=xml
+          export PYTHONPATH="$PWD"
+          venv/bin/pytest --maxfail=1 --disable-warnings -q \
+            --cov=app --cov-report=xml:coverage.xml
         '''
       }
     }
+
     stage('SonarQube Analysis') {
       steps {
-        withSonarQubeEnv('SonarQube servers') {
-          sh 'sonar-scanner'
+        withSonarQubeEnv('SonarQube servers') {   // ชื่อต้องตรงกับที่ตั้งใน Manage Jenkins
+          sh '''
+            export PYTHONPATH="$PWD"
+            sonar-scanner
+          '''
         }
       }
     }
+
     stage('Build Docker Image') {
       steps {
         sh 'docker build -t fastapi-app:latest .'
       }
     }
+
     stage('Deploy Container') {
       steps {
-        sh 'docker run -d -p 8000:8000 fastapi-app:latest'
+        sh '''
+          docker rm -f fastapi-app || true
+          docker run -d --name fastapi-app -p 8000:8000 fastapi-app:latest
+        '''
       }
     }
   }
+
   post {
     always {
       echo "Pipeline finished"
