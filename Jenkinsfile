@@ -21,6 +21,8 @@ pipeline {
     stage('Setup venv') {
       steps {
         sh '''
+          apt-get update
+          apt-get install -y openjdk-17-jdk
           python3 -m venv venv
           . venv/bin/activate
           pip install --upgrade pip
