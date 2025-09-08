@@ -7,8 +7,14 @@ pipeline {
     }
   }
 
+  options {
+    // กัน Jenkins ทำ Declarative: Checkout SCM อีกรอบ (เรา checkout เองใน stage)
+    skipDefaultCheckout(true)
+  }
+
   environment {
-    SONARQUBE = credentials('GlobalSonar') // จะมีหรือไม่ก็ได้
+    SONARQUBE = credentials('GlobalSonar')         // จะมีหรือไม่ก็ได้
+    SONAR_SCANNER_IMAGE = 'sonarsource/sonar-scanner-cli:5.0.1'
   }
 
   stages {
@@ -18,17 +24,25 @@ pipeline {
       }
     }
 
-    // ติดตั้ง docker CLI ใน agent (ครั้งแรกเท่านั้น; subsequent runs จะ cache layer ของ container ไว้)
-    stage('Prepare tools (docker CLI)') {
+    // ติดตั้ง docker CLI (เล็ก/ไวกว่า docker.io)
+    stage('Prepare docker CLI (lightweight)') {
       steps {
         sh '''
           set -e
           if ! command -v docker >/dev/null 2>&1; then
             apt-get update
-            apt-get install -y docker.io
+            apt-get install -y --no-install-recommends docker-cli ca-certificates
+            rm -rf /var/lib/apt/lists/*
           fi
           docker --version
         '''
+      }
+    }
+
+    // อุ่นอิมเมจสแกนเนอร์ไว้ก่อน เพื่อลดเวลาที่สเตจ Sonar
+    stage('Warm Sonar image') {
+      steps {
+        sh 'docker pull ${SONAR_SCANNER_IMAGE}'
       }
     }
 
@@ -55,21 +69,20 @@ pipeline {
     }
 
     stage('SonarQube Analysis') {
+      options { timeout(time: 15, unit: 'MINUTES') }
       steps {
         withSonarQubeEnv('SonarQube servers') {
           script {
-            def WS = pwd()
-            // ใช้ single quotes เพื่อลด Groovy interpolation warning ของ secret
             sh '''
               set -e
               export PYTHONPATH="$PWD"
               docker run --rm \
+                --add-host=host.docker.internal:host-gateway \
                 -e SONAR_HOST_URL="$SONAR_HOST_URL" \
                 -e SONAR_LOGIN="$SONAR_AUTH_TOKEN" \
                 -v "$PWD:/usr/src" \
                 -w /usr/src \
-                sonarsource/sonar-scanner-cli:latest \
-                sonar-scanner
+                ${SONAR_SCANNER_IMAGE} sonar-scanner
             '''
           }
         }
