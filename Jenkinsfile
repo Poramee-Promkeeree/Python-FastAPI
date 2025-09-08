@@ -7,7 +7,7 @@ pipeline {
   }
 
   environment {
-    SONARQUBE = credentials('GlobalSonar')  // มี/ไม่มีบรรทัดนี้ก็ได้ เพราะ withSonarQubeEnv จะ inject token ให้อยู่แล้ว
+    SONARQUBE = credentials('GlobalSonar')
   }
 
   stages {
@@ -41,12 +41,18 @@ pipeline {
 
     stage('SonarQube Analysis') {
       steps {
-        withSonarQubeEnv('SonarQube servers') { // ต้องตรงกับชื่อ Server ใน Jenkins
+        withSonarQubeEnv('SonarQube servers') {
           script {
-            def scannerHome = tool 'SonarQube Scanner' // ต้องตรงกับชื่อ Tool ที่ตั้งไว้
+            def WS = pwd()
             sh """
-              export PYTHONPATH="$PWD"
-              "${scannerHome}/bin/sonar-scanner"
+              export PYTHONPATH="${WS}"
+              docker run --rm \
+                -e SONAR_HOST_URL="$SONAR_HOST_URL" \
+                -e SONAR_LOGIN="$SONAR_AUTH_TOKEN" \
+                -v "${WS}:/usr/src" \
+                -w /usr/src \
+                sonarsource/sonar-scanner-cli:latest \
+                sonar-scanner
             """
           }
         }
