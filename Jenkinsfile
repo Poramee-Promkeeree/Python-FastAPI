@@ -1,5 +1,10 @@
 pipeline {
-  agent any
+  agent {
+    docker {
+      image 'python:3.11'
+      args '-v /var/run/docker.sock:/var/run/docker.sock'
+    }
+  }
 
   tools {
     jdk 'JDK'                // ชื่อต้องตรงกับที่ config ไว้
@@ -42,7 +47,7 @@ pipeline {
             def scannerHome = tool 'SonarQube Scanner'   // ชื่อต้องตรงกับที่ตั้งในรูปของคุณ
             sh """
               set -e
-              export PATH="${scannerHome}/bin:\$PATH"
+              export PATH=\"${scannerHome}/bin:\$PATH\"
               sonar-scanner
             """
           }
