@@ -1,7 +1,7 @@
 pipeline {
   agent {
     docker {
-      image 'python:3.11'
+      image 'cimg/python:3.11.4'
       args '-v /var/run/docker.sock:/var/run/docker.sock --user root'
     }
   }
@@ -46,7 +46,7 @@ pipeline {
       steps {
         withSonarQubeEnv('SonarQube servers') {
           script {
-            def scannerHome = tool 'SonarQube Scanner'   // ชื่อต้องตรงกับที่ตั้งในรูปของคุณ
+            def scannerHome = tool 'SonarQube Scanner'   // ชื่อต้องตรงกับที่ config ไว้
             sh """
               set -e
               export PATH=\"${scannerHome}/bin:\$PATH\"
