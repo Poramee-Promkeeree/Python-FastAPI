@@ -2,18 +2,33 @@ pipeline {
   agent {
     docker {
       image 'python:3.11'
-      args '-v /var/run/docker.sock:/var/run/docker.sock'
+      // รันเป็น root + ใช้ docker.sock ของโฮสต์
+      args '-u root -v /var/run/docker.sock:/var/run/docker.sock'
     }
   }
 
   environment {
-    SONARQUBE = credentials('GlobalSonar')  // จะมีหรือไม่มีก็ได้
+    SONARQUBE = credentials('GlobalSonar') // จะมีหรือไม่ก็ได้
   }
 
   stages {
     stage('Checkout') {
       steps {
         git branch: 'main', url: 'https://github.com/Poramee-Promkeeree/Python-FastAPI.git'
+      }
+    }
+
+    // ติดตั้ง docker CLI ใน agent (ครั้งแรกเท่านั้น; subsequent runs จะ cache layer ของ container ไว้)
+    stage('Prepare tools (docker CLI)') {
+      steps {
+        sh '''
+          set -e
+          if ! command -v docker >/dev/null 2>&1; then
+            apt-get update
+            apt-get install -y docker.io
+          fi
+          docker --version
+        '''
       }
     }
 
@@ -39,21 +54,24 @@ pipeline {
       }
     }
 
-    // 🔧 เปลี่ยน agent เฉพาะสเตจนี้ให้ใช้ภาพ sonarsource/sonar-scanner-cli
     stage('SonarQube Analysis') {
-      agent {
-        docker {
-          image 'sonarsource/sonar-scanner-cli:latest'
-          // ไม่ต้อง mount docker.sock เพราะเราไม่เรียก docker ข้างในอีก
-        }
-      }
       steps {
         withSonarQubeEnv('SonarQube servers') {
-          // ใช้ single-quoted heredoc เพื่อเลี่ยง Groovy interpolation warning ของ secret
-          sh '''
-            export PYTHONPATH="$PWD"
-            sonar-scanner
-          '''
+          script {
+            def WS = pwd()
+            // ใช้ single quotes เพื่อลด Groovy interpolation warning ของ secret
+            sh '''
+              set -e
+              export PYTHONPATH="$PWD"
+              docker run --rm \
+                -e SONAR_HOST_URL="$SONAR_HOST_URL" \
+                -e SONAR_LOGIN="$SONAR_AUTH_TOKEN" \
+                -v "$PWD:/usr/src" \
+                -w /usr/src \
+                sonarsource/sonar-scanner-cli:latest \
+                sonar-scanner
+            '''
+          }
         }
       }
     }
