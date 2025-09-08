@@ -58,7 +58,7 @@ pipeline {
 
     stage('Checkout') {
       steps {
-        git branch: 'main', url: 'https://github.com/Poramee-Promkeeree/Python-FastAPI.git'
+        git branch: 'Feature', url: 'https://github.com/Poramee-Promkeeree/Python-FastAPI.git'
       }
     }
 
